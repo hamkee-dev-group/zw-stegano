@@ -173,11 +173,7 @@ diff carrier.txt recovered.txt  # no output = identical
 
 ## Web UI Usage
 
-<<<<<<< HEAD
-Open `htps://hamkee.net/stegano/` in any modern browser. The interface has four tabs:
-=======
-Open `https://hamkee.net/stegano/` in any modern browser. The interface has four tabs:
->>>>>>> ce14263 (initial commit)
+The interface has four tabs:
 
 - **Encode** — paste carrier text and secret message, optionally enter a passphrase, click Encode. The result appears with copy-to-clipboard support and stats (bloat ratio, boundary usage).
 - **Decode** — paste encoded text, enter the same passphrase (if one was used), click Decode.
@@ -185,28 +181,6 @@ Open `https://hamkee.net/stegano/` in any modern browser. The interface has four
 - **Capacity** — paste carrier text to see how many word boundaries it has and the max secret size.
 
 The web UI uses `stegano.js`, a JavaScript port of the C algorithm using BigInt for 64-bit arithmetic. It produces identical output to the C tool — you can encode on the command line and decode in the browser, or vice versa.
-
----
-
-## Cross-Compatibility
-
-The C tool and web UI are fully interchangeable:
-
-| Encode with | Decode with | Result |
-|-------------|-------------|--------|
-| C CLI       | C CLI       | Works  |
-| C CLI       | Web UI      | Works  |
-| Web UI      | C CLI       | Works  |
-| Web UI      | Web UI      | Works  |
-
-This works because both implementations use:
-- The same 16-symbol alphabet
-- The same FNV-1a 64-bit hash function
-- The same xorshift64 PRNG
-- The same Fisher-Yates shuffle
-- The same input normalization
-
-Random filler symbols differ between runs (non-deterministic), but they don't affect decoding — only the data nibble positions matter, and those are determined by the deterministic PRNG seed.
 
 ---
 
