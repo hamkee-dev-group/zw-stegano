@@ -167,10 +167,10 @@ static char *strip_hidden(const char *text) {
     const char *end = text + len;
 
     while (*text) {
-        if (text + SYM_LEN <= end && decode_symbol(text) >= 0) {
+        char c = *text;
+        *dst++ = *text++;
+        if (is_word_boundary(c) && text + SYM_LEN <= end && decode_symbol(text) >= 0) {
             text += SYM_LEN;
-        } else {
-            *dst++ = *text++;
         }
     }
     *dst = '\0';
