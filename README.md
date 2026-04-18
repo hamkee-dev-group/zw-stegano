@@ -15,7 +15,7 @@ Check it out live: https://hamkee.net/stegano/
 - PRNG-scattered encoding — data nibbles are shuffled across positions via xorshift64 + Fisher-Yates
 - Uniform filler — every boundary gets a symbol (data or random), eliminating pattern edges
 - Passphrase support — optional passphrase seeds the PRNG scatter (no encryption, pure steganography)
-- Length-prefixed messages — up to 255 bytes, self-delimiting
+- Length + integrity header — up to 255 bytes, self-delimiting with decode validation
 - Channel survival — avoids U+2028/U+2029 (treated as whitespace by Python/JS runtimes)
 - Input normalization — CRLF to LF + trailing whitespace strip for cross-platform robustness
 - Strip command — remove all hidden symbols to recover the original carrier
@@ -47,7 +47,7 @@ The tool uses 16 invisible Unicode characters (all Category Cf — Format):
 | 0xE    | Left-to-Right Isolate    | `U+2066`   |
 | 0xF    | Right-to-Left Isolate    | `U+2067`   |
 
-Each byte of the secret message is split into two nibbles (4 bits each), and each nibble maps to one symbol. A 1-byte length prefix is prepended, so the decoder knows how many bytes to read.
+Each byte of the secret message is split into two nibbles (4 bits each), and each nibble maps to one symbol. A 1-byte length prefix and 2-byte integrity check are prepended, so the decoder can validate the payload before printing it.
 
 The encoding process:
 
@@ -122,10 +122,10 @@ Output example:
 
 ```
 Word boundaries: 42
-Max secret: 20 bytes
+Max secret: 18 bytes
 ```
 
-The formula: each byte needs 2 nibbles (2 boundary positions), plus 2 positions for the length prefix. So `max_secret = (boundaries - 2) / 2`.
+The formula: each byte needs 2 nibbles (2 boundary positions), plus 6 positions for the 1-byte length and 2-byte integrity header. So `max_secret = (boundaries - 6) / 2`.
 
 ### Example
 
@@ -137,14 +137,14 @@ echo -n "attack at dawn" > secret.txt
 # Check capacity
 ./stegano capacity carrier.txt
 # Word boundaries: 12
-# Max secret: 5 bytes  ← "attack at dawn" (14 bytes) won't fit
+# Max secret: 3 bytes  ← "attack at dawn" (14 bytes) won't fit
 
 # Use a longer carrier
 echo -n "The quick brown fox jumps over the lazy dog near the river bank on a warm summer evening while birds sing in the tall oak trees and clouds drift across the blue sky above the peaceful meadow where flowers bloom and bees buzz collecting sweet nectar" > carrier.txt
 
 ./stegano capacity carrier.txt
 # Word boundaries: 42
-# Max secret: 20 bytes  ← 14 bytes fits
+# Max secret: 18 bytes  ← 14 bytes fits
 
 # Encode (no passphrase)
 ./stegano encode carrier.txt secret.txt > stego.txt
@@ -162,7 +162,7 @@ echo -n "The quick brown fox jumps over the lazy dog near the river bank on a wa
 
 # Wrong passphrase fails
 ./stegano decode stego_pw.txt "wrong"
-# [ERROR] Declared length ... exceeds available data.
+# [ERROR] Hidden data failed integrity check.
 
 # Strip recovers the carrier
 ./stegano strip stego.txt > recovered.txt
@@ -189,7 +189,7 @@ The web UI uses `stegano.js`, a JavaScript port of the C algorithm using BigInt 
 This is **pure steganography, not encryption**. The security comes from the hiding itself — an observer sees ordinary text with no visible indication that anything is hidden.
 
 - **No passphrase**: the PRNG seed is derived from the carrier text hash. Anyone with the tool can decode, but they need to know (or suspect) that a message is hidden.
-- **With passphrase**: the PRNG seed comes from the passphrase hash. Even with the tool, decoding requires the correct passphrase — a wrong passphrase produces the wrong shuffle, yielding garbage.
+- **With passphrase**: the PRNG seed comes from the passphrase hash. Even with the tool, decoding requires the correct passphrase — a wrong passphrase produces the wrong shuffle, and decode now fails the payload integrity check instead of printing garbage.
 
 The passphrase controls scatter placement, not encryption. There is no ciphertext. If you need confidentiality guarantees beyond undetectability, encrypt the message before encoding it.
 
@@ -198,6 +198,6 @@ The passphrase controls scatter placement, not encryption. There is no ciphertex
 ## Limitations
 
 - **Max secret size**: 255 bytes (limited by the 1-byte length prefix)
-- **Carrier requirement**: needs enough word boundaries — roughly `2 * secret_length + 2` whitespace characters
+- **Carrier requirement**: needs enough word boundaries — roughly `2 * secret_length + 6` whitespace characters
 - **Channel survival**: works in any channel that preserves Unicode Cf characters. Will break in channels that actively strip non-printable Unicode (e.g., Python's `str.isprintable()` filter)
 - **Bloat ratio**: approximately 1.50x for typical English text (each boundary adds one 3-byte UTF-8 symbol)

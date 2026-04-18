@@ -6,6 +6,7 @@
 
 #define SYM_LEN 3
 #define SYM_COUNT 16
+#define HEADER_BYTES 3
 
 /*
  * Symbol alphabet: 16 invisible Unicode chars, all 3-byte UTF-8.
@@ -178,19 +179,39 @@ static char *strip_hidden(const char *text) {
 
 /* --- Encode: length-prefixed nibble encoding --- */
 
+static uint16_t payload_check(const char *msg, size_t len) {
+    uint64_t h = 14695981039346656037ULL;
+    unsigned char lb = (unsigned char)len;
+
+    h ^= lb;
+    h *= 1099511628211ULL;
+
+    for (size_t i = 0; i < len; i++) {
+        h ^= (unsigned char)msg[i];
+        h *= 1099511628211ULL;
+    }
+
+    return (uint16_t)h;
+}
+
 static char *secret_to_zw(const char *msg) {
     size_t len = strlen(msg);
     if (len > 255) return NULL;
 
-    size_t needed = (len + 1) * 2 * SYM_LEN;  // +1 for length prefix byte
+    size_t needed = (len + HEADER_BYTES) * 2 * SYM_LEN;
     char *out = calloc(needed + 1, 1);
     if (!out) return NULL;
 
     char *p = out;
 
     unsigned char lb = (unsigned char)len;
+    uint16_t check = payload_check(msg, len);
     memcpy(p, symbols[(lb >> 4) & 0x0F], SYM_LEN); p += SYM_LEN;
     memcpy(p, symbols[lb & 0x0F], SYM_LEN);         p += SYM_LEN;
+    memcpy(p, symbols[(check >> 12) & 0x0F], SYM_LEN); p += SYM_LEN;
+    memcpy(p, symbols[(check >> 8) & 0x0F], SYM_LEN);  p += SYM_LEN;
+    memcpy(p, symbols[(check >> 4) & 0x0F], SYM_LEN);  p += SYM_LEN;
+    memcpy(p, symbols[check & 0x0F], SYM_LEN);         p += SYM_LEN;
 
     for (size_t i = 0; i < len; i++) {
         unsigned char ch = msg[i];
@@ -267,17 +288,25 @@ static char *decode_scattered(const char *text, uint64_t seed) {
     for (const char *p = text; *p; p++) {
         if (is_word_boundary(*p)) boundaries++;
     }
-    if (boundaries < 2) return NULL;
+    if (boundaries < HEADER_BYTES * 2) {
+        fprintf(stderr, "[ERROR] Hidden data is incomplete.\n");
+        return NULL;
+    }
 
     // Extract the nibble at each boundary (symbol sits right after the whitespace byte)
     int *nibbles = calloc(boundaries, sizeof(int));
     if (!nibbles) return NULL;
+    unsigned char *present = calloc(boundaries, 1);
+    if (!present) { free(nibbles); return NULL; }
     size_t idx = 0;
     for (const char *p = text; *p; p++) {
         if (is_word_boundary(*p)) {
             if (p + 1 + SYM_LEN <= end) {
                 int val = decode_symbol(p + 1);
-                nibbles[idx] = (val >= 0) ? val : 0;
+                if (val >= 0) {
+                    nibbles[idx] = val;
+                    present[idx] = 1;
+                }
             }
             idx++;
         }
@@ -285,39 +314,67 @@ static char *decode_scattered(const char *text, uint64_t seed) {
 
     // Same shuffle as encoder
     size_t *order = malloc(boundaries * sizeof(size_t));
-    if (!order) { free(nibbles); return NULL; }
+    if (!order) { free(nibbles); free(present); return NULL; }
     for (size_t i = 0; i < boundaries; i++) order[i] = i;
     prng_t rng = { .s = seed ? seed : 1 };
     shuffle(order, boundaries, &rng);
 
     // First byte in shuffled order = message length
+    if (!present[order[0]] || !present[order[1]]) {
+        fprintf(stderr, "[ERROR] Hidden data is incomplete.\n");
+        free(nibbles); free(present); free(order);
+        return NULL;
+    }
     unsigned char hi = (unsigned char)nibbles[order[0]];
     unsigned char lo = (unsigned char)nibbles[order[1]];
     int length = (int)((hi << 4) | lo);
-    fprintf(stderr, "%X%X [len=%d]\n", hi, lo, length);
-
-    if (length == 0) {
-        free(nibbles); free(order);
-        return calloc(1, 1);
-    }
-    if ((size_t)(length + 1) * 2 > boundaries) {
-        fprintf(stderr, "[ERROR] Declared length %d exceeds available data.\n", length);
-        free(nibbles); free(order);
+    if ((size_t)(length + HEADER_BYTES) * 2 > boundaries) {
+        fprintf(stderr, "[ERROR] Hidden data failed integrity check.\n");
+        free(nibbles); free(present); free(order);
         return NULL;
     }
 
     char *msg = calloc((size_t)length + 1, 1);
-    if (!msg) { free(nibbles); free(order); return NULL; }
+    if (!msg) { free(nibbles); free(present); free(order); return NULL; }
+
+    for (int i = 0; i < 2; i++) {
+        if (!present[order[2 + i * 2]] || !present[order[2 + i * 2 + 1]]) {
+            fprintf(stderr, "[ERROR] Hidden data is incomplete.\n");
+            free(nibbles); free(present); free(order); free(msg);
+            return NULL;
+        }
+    }
+
+    uint16_t expected = (uint16_t)nibbles[order[2]] << 12;
+    expected |= (uint16_t)nibbles[order[3]] << 8;
+    expected |= (uint16_t)nibbles[order[4]] << 4;
+    expected |= (uint16_t)nibbles[order[5]];
 
     for (int i = 0; i < length; i++) {
-        unsigned char h = (unsigned char)nibbles[order[2 + i * 2]];
-        unsigned char l = (unsigned char)nibbles[order[2 + i * 2 + 1]];
+        size_t hpos = order[HEADER_BYTES * 2 + i * 2];
+        size_t lpos = order[HEADER_BYTES * 2 + i * 2 + 1];
+        if (!present[hpos] || !present[lpos]) {
+            fprintf(stderr, "[ERROR] Hidden data is incomplete.\n");
+            free(nibbles); free(present); free(order); free(msg);
+            return NULL;
+        }
+        unsigned char h = (unsigned char)nibbles[hpos];
+        unsigned char l = (unsigned char)nibbles[lpos];
         unsigned char ch = (h << 4) | l;
         msg[i] = (char)ch;
-        fprintf(stderr, "%X%X [%c]\n", h, l, (ch >= 32 && ch < 127) ? ch : '?');
+    }
+
+    if (payload_check(msg, (size_t)length) != expected) {
+        fprintf(stderr, "[ERROR] Hidden data failed integrity check.\n");
+        free(nibbles);
+        free(present);
+        free(order);
+        free(msg);
+        return NULL;
     }
 
     free(nibbles);
+    free(present);
     free(order);
     return msg;
 }
@@ -355,12 +412,12 @@ int main(int argc, char **argv) {
             : fnv1a(carrier, strlen(carrier));
 
         size_t boundaries = count_word_boundaries(carrier);
-        size_t data_syms = (strlen(secret) + 1) * 2;
+        size_t data_syms = (strlen(secret) + HEADER_BYTES) * 2;
         if (boundaries < data_syms) {
             fprintf(stderr, "[ERROR] Carrier has %zu boundaries, needs %zu. "
                     "Max secret: %zu bytes.\n",
                     boundaries, data_syms,
-                    boundaries >= 2 ? (boundaries - 2) / 2 : (size_t)0);
+                    boundaries >= HEADER_BYTES * 2 ? (boundaries - HEADER_BYTES * 2) / 2 : (size_t)0);
             free(carrier); free(secret);
             return 1;
         }
@@ -405,13 +462,14 @@ int main(int argc, char **argv) {
             free(carrier);
         }
 
-        fprintf(stderr, "[DEBUG] Starting decode...\n");
         char *secret = decode_scattered(input, seed);
         if (secret) {
             printf("%s\n", secret);
             free(secret);
         } else {
             fprintf(stderr, "Decoding failed.\n");
+            free(input);
+            return 1;
         }
 
         free(input);
@@ -437,7 +495,7 @@ int main(int argc, char **argv) {
         }
         normalize_input(carrier);
         size_t boundaries = count_word_boundaries(carrier);
-        size_t max_len = boundaries >= 2 ? (boundaries - 2) / 2 : 0;
+        size_t max_len = boundaries >= HEADER_BYTES * 2 ? (boundaries - HEADER_BYTES * 2) / 2 : 0;
         printf("Word boundaries: %zu\nMax secret: %zu bytes\n", boundaries, max_len);
         free(carrier);
     }

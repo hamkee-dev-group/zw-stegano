@@ -13,7 +13,7 @@ trap "rm -rf $WORK" EXIT
 cmp -s tests/repro/carrier_inline_wj.txt "$WORK/recovered.txt" \
     || { echo "FAIL: strip did not restore carrier"; exit 1; }
 
-expected='70 72 65 e2 81 a0 6d 69 64 20 6f 6e 65 20 74 77 6f 20 74 68 72 65 65 20 66 6f 75 72 20 66 69 76 65'
+expected='70 72 65 e2 81 a0 6d 69 64 20 6f 6e 65 20 74 77 6f 20 74 68 72 65 65 20 66 6f 75 72 20 66 69 76 65 20 73 69 78 20 73 65 76 65 6e 20 65 69 67 68 74 0a'
 actual=$(od -An -t x1 "$WORK/recovered.txt" | tr -s ' \n' ' ' | sed -e 's/^ //' -e 's/ $//')
 [ "$actual" = "$expected" ] \
     || { echo "FAIL: recovered hex mismatch"; echo "  expected: $expected"; echo "  actual:   $actual"; exit 1; }
