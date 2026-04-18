@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <time.h>
 #include <locale.h>
 
 #define SYM_LEN 3
@@ -243,7 +242,7 @@ static char *embed_scattered(const char *carrier, const char *zw_syms, uint64_t 
             if (assign[bidx] >= 0) {
                 memcpy(dst, zw_syms + assign[bidx] * SYM_LEN, SYM_LEN);
             } else {
-                memcpy(dst, symbols[rand() % SYM_COUNT], SYM_LEN);
+                memcpy(dst, symbols[prng_next(&rng) % SYM_COUNT], SYM_LEN);
             }
             dst += SYM_LEN;
             bidx++;
@@ -325,7 +324,6 @@ static char *decode_scattered(const char *text, uint64_t seed) {
 
 int main(int argc, char **argv) {
     setlocale(LC_ALL, "en_US.UTF-8");
-    srand((unsigned)time(NULL));
 
     if (argc < 3) {
         fprintf(stderr,
