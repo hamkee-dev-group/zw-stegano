@@ -283,10 +283,20 @@ static char *decode_scattered(const char *text, uint64_t seed) {
     size_t text_len = strlen(text);
     const char *end = text + text_len;
 
-    // Count boundaries
+    // Count boundaries and check for any hidden symbols
     size_t boundaries = 0;
+    size_t present_count = 0;
     for (const char *p = text; *p; p++) {
-        if (is_word_boundary(*p)) boundaries++;
+        if (is_word_boundary(*p)) {
+            boundaries++;
+            if (p + 1 + SYM_LEN <= end && decode_symbol(p + 1) >= 0) {
+                present_count++;
+            }
+        }
+    }
+    if (present_count == 0) {
+        fprintf(stderr, "[ERROR] No hidden message found.\n");
+        return NULL;
     }
     if (boundaries < HEADER_BYTES * 2) {
         fprintf(stderr, "[ERROR] Hidden data is incomplete.\n");
@@ -467,7 +477,6 @@ int main(int argc, char **argv) {
             printf("%s\n", secret);
             free(secret);
         } else {
-            fprintf(stderr, "Decoding failed.\n");
             free(input);
             return 1;
         }
