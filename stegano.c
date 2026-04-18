@@ -346,8 +346,6 @@ int main(int argc, char **argv) {
             free(carrier); free(secret);
             return 1;
         }
-        normalize_input(carrier);
-
         if (strlen(secret) > 255) {
             fprintf(stderr, "[ERROR] Secret too long (%zu bytes, max 255).\n", strlen(secret));
             free(carrier); free(secret);
