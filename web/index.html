@@ -3,304 +3,364 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zero-Width Steganography</title>
+  <title>Zero-Width Steganography · HAMKEE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&family=Source+Sans+3:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    /* Colours, fonts and form styles are hamkee.net's own (its /css/main.css and the design
+       tokens in /_astro/about.*.css): slate page, brand #4c5c96/#5b6ba6, Raleway uppercase labels
+       and buttons, Source Sans 3 body, JetBrains Mono for code, 2px translucent borders. */
     :root {
-      --accent: #0077cc;
-      --accent-hover: #005fa3;
-      --bg: #f4f6f8;
-      --card: #fff;
-      --text: #333;
-      --muted: #6c757d;
-      --border: #ddd;
-      --error-bg: #fef2f2;
-      --error-text: #dc3545;
-      --success-bg: #f0fdf4;
-      --success-text: #16a34a;
-      --radius: 6px;
+      --bg-page: #2e3141;
+      --bg-surface-1: #2b3040;
+      --bg-surface-2: #313647;
+      --bg-subtle: rgba(255, 255, 255, .025);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, .78);
+      --text-tertiary: rgba(255, 255, 255, .5);
+      --border-default: rgba(255, 255, 255, .125);
+      --border-strong: rgba(255, 255, 255, .2);
+      --brand: #5b6ba6;
+      --action-primary: #4c5c96;
+      --action-primary-hover: #53639e;
+      --action-primary-active: #45558d;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --radius: 5px;
+      --font-display: Raleway, Helvetica, sans-serif;
+      --font-body: "Source Sans 3", "Helvetica Neue", Helvetica, sans-serif;
+      --font-mono: "JetBrains Mono", "Courier New", monospace;
     }
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
       margin: 0;
-      padding: 0;
-      line-height: 1.5;
+      background: var(--bg-page);
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-weight: 300;
+      font-size: 1.05rem;
+      line-height: 1.65;
     }
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 24px 28px;
-      background: var(--card);
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    .container { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
+    header { margin-bottom: 1.75rem; }
+    .brand {
+      font-family: var(--font-display); font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      font-size: .75rem; color: var(--text-tertiary); text-decoration: none;
     }
+    .brand:hover { color: var(--text-primary); }
     h1 {
-      text-align: center;
-      color: var(--accent);
-      margin: 0 0 4px;
-      font-size: 1.6rem;
+      font-family: var(--font-display); font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--text-primary); font-size: 1.5rem; margin: .4rem 0 .6rem;
     }
-    .subtitle {
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-bottom: 20px;
-    }
+    .subtitle { margin: 0 0 .4rem; }
+    .caveat { margin: 0; font-size: .92rem; color: var(--text-tertiary); }
 
     /* ── Tabs ─────────────────────────────────────── */
-    .tabs {
-      display: flex;
-      gap: 0;
-      border-bottom: 2px solid var(--border);
-      margin-bottom: 20px;
-    }
+    .tabs { display: flex; gap: .25rem; border-bottom: 2px solid var(--border-default); margin-bottom: 1.5rem; overflow-x: auto; }
     .tab {
-      padding: 10px 22px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      color: var(--muted);
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      transition: color 0.15s, border-color 0.15s;
-      user-select: none;
+      appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -2px;
+      padding: .7rem 1.1rem; cursor: pointer; color: var(--text-tertiary);
+      font-family: var(--font-display); font-weight: 700; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+      white-space: nowrap; box-shadow: none; height: auto; line-height: 1.4;
     }
-    .tab:hover { color: var(--text); }
-    .tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      font-weight: 600;
-    }
+    .tab:hover { color: var(--text-primary); background: none; }
+    .tab.active { color: var(--text-primary); border-bottom-color: var(--brand); }
     .panel { display: none; }
     .panel.active { display: block; }
+    .panel-help { margin: 0 0 1.25rem; font-size: .95rem; }
 
     /* ── Form elements ────────────────────────────── */
     label {
-      display: block;
-      font-weight: 600;
-      font-size: 0.85rem;
-      margin-bottom: 4px;
-      color: var(--text);
+      display: block; color: var(--text-primary); margin: 0 0 .5rem;
+      font-family: var(--font-display); font-weight: 700; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
     }
-    .hint {
-      font-weight: 400;
-      color: var(--muted);
-      font-size: 0.8rem;
+    .hint { font-family: var(--font-body); font-weight: 300; font-size: .9rem; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
+    textarea, input[type="text"], input[type="password"] {
+      appearance: none; display: block; width: 100%;
+      background: var(--bg-subtle); color: var(--text-primary);
+      border: solid 2px var(--border-default); border-radius: var(--radius);
+      font-size: 1rem; outline: 0;
     }
-    textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-      font-size: 0.88rem;
-      resize: vertical;
-      margin-bottom: 12px;
-      line-height: 1.5;
-      color: var(--text);
-      background: #fafbfc;
-    }
-    textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(0,119,204,0.15);
-    }
-    textarea[readonly] {
-      background: #f9f9f9;
-      cursor: default;
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.9rem;
-      margin-bottom: 12px;
-      font-family: inherit;
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(0,119,204,0.15);
-    }
-    .passphrase-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .passphrase-row input { margin-bottom: 0; flex: 1; }
-    .passphrase-row label {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-weight: 400;
-      font-size: 0.82rem;
-      color: var(--muted);
-      white-space: nowrap;
-      margin-bottom: 0;
-      cursor: pointer;
-    }
-    .passphrase-row label input[type="checkbox"] {
-      width: auto;
-      margin: 0;
-    }
+    textarea { padding: .75em 1em; font-family: var(--font-mono); font-size: .88rem; line-height: 1.6; resize: vertical; }
+    input[type="text"], input[type="password"] { height: 2.75em; padding: 0 1em; font-family: var(--font-body); }
+    textarea:focus, input:focus { border-color: var(--brand); }
+    textarea[readonly] { background: var(--bg-surface-1); }
+    ::placeholder { color: var(--text-tertiary); opacity: 1; }
+    .field { margin-bottom: 1.25rem; }
+    .passphrase-row { display: flex; align-items: center; gap: .75rem; }
+    .passphrase-row input[type="text"], .passphrase-row input[type="password"] { flex: 1; }
+    .check { display: inline-flex; align-items: center; gap: .4rem; margin: 0; cursor: pointer; white-space: nowrap; }
+    .check input { width: auto; margin: 0; accent-color: var(--action-primary); }
 
-    /* ── Buttons ──────────────────────────────────── */
-    .btn-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    /* ── Buttons (hamkee.net .button / .button.primary) ── */
+    .btn-row { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0 0 1.25rem; }
     button {
-      background: var(--accent);
-      color: #fff;
-      padding: 9px 22px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.15s;
-      font-family: inherit;
+      appearance: none; border: 0; border-radius: var(--radius); cursor: pointer;
+      background-color: transparent; box-shadow: inset 0 0 0 2px var(--border-default); color: var(--text-primary);
+      font-family: var(--font-display); font-weight: 700; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+      height: 3.5em; line-height: 3.5em; padding: 0 2em; white-space: nowrap; transition: background-color .2s ease-in-out;
     }
-    button:hover { background: var(--accent-hover); }
-    button:active { transform: scale(0.98); }
-    button.secondary {
-      background: #e9ecef;
-      color: var(--text);
+    button:hover { background-color: var(--bg-subtle); }
+    button.primary { background-color: var(--action-primary); box-shadow: none; }
+    button.primary:hover { background-color: var(--action-primary-hover); }
+    button.primary:active { background-color: var(--action-primary-active); }
+    button:disabled, button:disabled:hover, button.primary:disabled, button.primary:disabled:hover { cursor: not-allowed; background-color: transparent; box-shadow: inset 0 0 0 2px var(--border-default); color: var(--text-tertiary); }
+
+    /* ── Live capacity meter ──────────────────────── */
+    .meter {
+      background: var(--bg-surface-1); border: solid 2px var(--border-default); border-radius: var(--radius);
+      padding: .9rem 1.1rem; margin: 0 0 1.25rem; font-size: .95rem;
     }
-    button.secondary:hover { background: #dee2e6; }
+    .meter-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem 1rem; color: var(--text-primary); font-weight: 600; }
+    .bar { height: 6px; background: var(--bg-surface-2); border-radius: 3px; margin: .6rem 0; overflow: hidden; }
+    .bar > span { display: block; height: 100%; width: 0; background: var(--green); transition: width .15s; }
+    .meter.tight .bar > span { background: var(--yellow); }
+    .meter.over .bar > span { background: var(--red); }
+    .meter.over { border-color: rgba(248, 113, 113, .45); }
+    .meter .verdict { margin: 0 0 .25rem; }
+    .meter.ok .verdict strong { color: var(--green); }
+    .meter.tight .verdict strong { color: var(--yellow); }
+    .meter.over .verdict strong { color: var(--red); }
+    .meter .detail { margin: 0; font-size: .88rem; color: var(--text-tertiary); }
+    .meter .detail code, .mono { font-family: var(--font-mono); font-size: .85em; }
 
     /* ── Status / stats ───────────────────────────── */
-    .status {
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      font-size: 0.85rem;
-      margin-bottom: 14px;
-      display: none;
+    .status { padding: .7rem 1rem; border-radius: var(--radius); font-size: .95rem; margin: 0 0 1.25rem; display: none; border: solid 2px; }
+    .status.error { display: block; color: var(--red); border-color: rgba(248, 113, 113, .45); background: rgba(248, 113, 113, .06); }
+    .status.success { display: block; color: var(--green); border-color: rgba(74, 222, 128, .4); background: rgba(74, 222, 128, .06); }
+    .stats { font-family: var(--font-mono); font-size: .8rem; color: var(--text-tertiary); margin: 0 0 1rem; overflow-wrap: anywhere; }
+
+    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 2px solid var(--border-default); font-size: .9rem; color: var(--text-tertiary); }
+    footer a { color: var(--text-secondary); }
+
+    @media (max-width: 560px) {
+      .container { padding: 1.5rem 1rem 2rem; }
+      h1 { font-size: 1.2rem; }
+      .tabs { flex-wrap: wrap; overflow-x: visible; }
+      .tab { padding: .6rem .7rem; }
+      .btn-row button { flex: 1 1 100%; }
+      .passphrase-row { flex-wrap: wrap; }
     }
-    .status.error {
-      display: block;
-      background: var(--error-bg);
-      color: var(--error-text);
-      border: 1px solid #fecaca;
-    }
-    .status.success {
-      display: block;
-      background: var(--success-bg);
-      color: var(--success-text);
-      border: 1px solid #bbf7d0;
-    }
-    .stats {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-family: "SF Mono", monospace;
-      margin-bottom: 10px;
-    }
-    .capacity-hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      margin: -8px 0 12px;
-    }
-    .capacity-hint strong { color: var(--text); }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Zero-Width Steganography</h1>
-    <p class="subtitle">Hide secret messages in plain text using invisible Unicode characters</p>
+    <header>
+      <a class="brand" href="https://hamkee.net/">HAMKEE</a>
+      <h1>Zero-Width Steganography</h1>
+      <p class="subtitle">Hide a short message inside ordinary text using invisible Unicode characters. Everything runs in your browser; nothing is sent anywhere.</p>
+      <p class="caveat">This is not encryption. Anyone with this tool (and the passphrase, if you set one) can read the message, and software that looks for invisible characters can detect or remove them.</p>
+    </header>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="encode">Encode</div>
-      <div class="tab" data-tab="decode">Decode</div>
-      <div class="tab" data-tab="strip">Strip</div>
-      <div class="tab" data-tab="capacity">Capacity</div>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="encode" role="tab">Encode</button>
+      <button class="tab" data-tab="decode" role="tab">Decode</button>
+      <button class="tab" data-tab="strip" role="tab">Remove hidden characters</button>
     </div>
 
     <!-- ── Encode ─────────────────────────────────── -->
     <div id="encode" class="panel active">
-      <label for="enc-carrier">Carrier text</label>
-      <textarea id="enc-carrier" rows="6" placeholder="Paste the innocent-looking cover text here..."></textarea>
-      <div id="enc-cap-hint" class="capacity-hint"></div>
+      <div class="field">
+        <label for="enc-carrier">Carrier text <span class="hint">the visible text the message hides in</span></label>
+        <textarea id="enc-carrier" rows="6" placeholder="Paste the ordinary-looking cover text here..."></textarea>
+      </div>
 
-      <label for="enc-secret">Secret message <span class="hint" id="enc-sec-hint"></span></label>
-      <textarea id="enc-secret" rows="2" placeholder="The message to hide..."></textarea>
+      <div class="field">
+        <label for="enc-secret">Secret message</label>
+        <textarea id="enc-secret" rows="2" placeholder="The message to hide..."></textarea>
+      </div>
 
-      <label>Passphrase <span class="hint">(optional — leave empty to use carrier hash)</span></label>
-      <div class="passphrase-row">
-        <input type="password" id="enc-pass" placeholder="Passphrase">
-        <label><input type="checkbox" id="enc-show-pass"> Show</label>
+      <div id="enc-meter" class="meter" aria-live="polite">
+        <div class="meter-head"><span id="enc-meter-title">Room for the message</span><span id="enc-meter-figure"></span></div>
+        <div class="bar"><span id="enc-meter-bar"></span></div>
+        <p class="verdict" id="enc-meter-verdict">Paste a carrier text to see how much it can hold.</p>
+        <p class="detail" id="enc-meter-detail"></p>
+      </div>
+
+      <div class="field">
+        <label for="enc-pass">Passphrase <span class="hint">optional · decides where the hidden characters go; it is not encryption</span></label>
+        <div class="passphrase-row">
+          <input type="password" id="enc-pass" placeholder="Passphrase" autocomplete="off">
+          <label class="check hint"><input type="checkbox" id="enc-show-pass"> Show</label>
+        </div>
       </div>
 
       <div class="btn-row">
-        <button id="enc-btn">Encode</button>
+        <button id="enc-btn" class="primary" disabled>Encode</button>
       </div>
 
       <div id="enc-status" class="status"></div>
       <div id="enc-stats" class="stats"></div>
 
-      <label for="enc-result">Result</label>
-      <textarea id="enc-result" rows="6" readonly placeholder="Encoded output will appear here..."></textarea>
+      <div class="field">
+        <label for="enc-result">Result <span class="hint">looks like the carrier; copy it as a whole</span></label>
+        <textarea id="enc-result" rows="6" readonly placeholder="Encoded output will appear here..."></textarea>
+      </div>
       <div class="btn-row">
-        <button class="secondary" id="enc-copy">Copy to Clipboard</button>
+        <button id="enc-copy">Copy to clipboard</button>
       </div>
     </div>
 
     <!-- ── Decode ─────────────────────────────────── -->
     <div id="decode" class="panel">
-      <label for="dec-input">Encoded text</label>
-      <textarea id="dec-input" rows="6" placeholder="Paste text containing hidden message..."></textarea>
+      <div class="field">
+        <label for="dec-input">Text with a hidden message</label>
+        <textarea id="dec-input" rows="6" placeholder="Paste text containing a hidden message..."></textarea>
+      </div>
 
-      <label>Passphrase <span class="hint">(must match the one used to encode)</span></label>
-      <div class="passphrase-row">
-        <input type="password" id="dec-pass" placeholder="Passphrase">
-        <label><input type="checkbox" id="dec-show-pass"> Show</label>
+      <div class="field">
+        <label for="dec-pass">Passphrase <span class="hint">must match the one used to encode; leave empty if none was used</span></label>
+        <div class="passphrase-row">
+          <input type="password" id="dec-pass" placeholder="Passphrase" autocomplete="off">
+          <label class="check hint"><input type="checkbox" id="dec-show-pass"> Show</label>
+        </div>
       </div>
 
       <div class="btn-row">
-        <button id="dec-btn">Decode</button>
+        <button id="dec-btn" class="primary">Decode</button>
       </div>
 
       <div id="dec-status" class="status"></div>
 
-      <label for="dec-result">Hidden message</label>
-      <textarea id="dec-result" rows="3" readonly placeholder="Decoded secret will appear here..."></textarea>
+      <div class="field">
+        <label for="dec-result">Hidden message</label>
+        <textarea id="dec-result" rows="3" readonly placeholder="Decoded message will appear here..."></textarea>
+      </div>
       <div class="btn-row">
-        <button class="secondary" id="dec-copy">Copy to Clipboard</button>
+        <button id="dec-copy">Copy to clipboard</button>
       </div>
     </div>
 
-    <!-- ── Strip ──────────────────────────────────── -->
+    <!-- ── Remove hidden characters (Stegano.strip) ── -->
     <div id="strip" class="panel">
-      <label for="strip-input">Encoded text</label>
-      <textarea id="strip-input" rows="6" placeholder="Paste text to remove all hidden symbols..."></textarea>
+      <p class="panel-help">Deletes every invisible character this tool uses and gives back the plain visible text, for example
+        to clean a text before you forward or publish it, or to get the original carrier back. It does not read the message
+        (use Decode for that). Note: the same invisible characters are also used legitimately, for example as
+        left-to-right or right-to-left marks in mixed-script text, and those are removed too.</p>
+      <div class="field">
+        <label for="strip-input">Text</label>
+        <textarea id="strip-input" rows="6" placeholder="Paste text to remove hidden characters from..."></textarea>
+      </div>
 
       <div class="btn-row">
-        <button id="strip-btn">Strip Hidden Symbols</button>
+        <button id="strip-btn" class="primary">Remove hidden characters</button>
       </div>
 
       <div id="strip-status" class="status"></div>
 
-      <label for="strip-result">Clean text</label>
-      <textarea id="strip-result" rows="6" readonly placeholder="Text with symbols removed..."></textarea>
+      <div class="field">
+        <label for="strip-result">Clean text</label>
+        <textarea id="strip-result" rows="6" readonly placeholder="Text without hidden characters..."></textarea>
+      </div>
       <div class="btn-row">
-        <button class="secondary" id="strip-copy">Copy to Clipboard</button>
+        <button id="strip-copy">Copy to clipboard</button>
       </div>
     </div>
 
-    <!-- ── Capacity ───────────────────────────────── -->
-    <div id="capacity" class="panel">
-      <label for="cap-input">Carrier text</label>
-      <textarea id="cap-input" rows="6" placeholder="Paste carrier text to check capacity..."></textarea>
-
-      <div class="btn-row">
-        <button id="cap-btn">Check Capacity</button>
-      </div>
-
-      <div id="cap-status" class="status"></div>
-      <div id="cap-result" class="stats"></div>
-    </div>
+    <footer>
+      zw-stegano by <a href="https://hamkee.net/">HAMKEE</a> ·
+      <a href="https://github.com/hamkee-dev-group/zw-stegano">source on GitHub</a>
+    </footer>
   </div>
 
   <script src="stegano.js"></script>
   <script>
+    /* ── Capacity, mirrored from Stegano.encode() in stegano.js (do not diverge) ──
+       A message of n UTF-8 bytes is framed as a 1-byte length + n bytes, one 4-bit symbol per
+       word boundary: it needs 2 + 2n boundaries. Boundaries are spaces, tabs and line breaks
+       counted after Stegano's own normalisation (CRLF -> LF, trailing whitespace dropped),
+       which Stegano.capacity() applies. The length byte caps n at 255. encode() still checks
+       both and remains the authority; this only says so before the click. */
+    const MAX_BYTES = 255;
+    const utf8 = new TextEncoder();
+    const segmenter = (typeof Intl !== 'undefined' && Intl.Segmenter)
+      ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+
+    function charCount(s) {               /* user-perceived characters (grapheme clusters) */
+      if (!s) return 0;
+      if (segmenter) { let n = 0; for (const _ of segmenter.segment(s)) n++; return n; }
+      return [...s].length;               /* fallback: code points */
+    }
+    function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
+    function plan(carrier, secret) {
+      const boundaries = carrier.trim() ? Stegano.capacity(carrier).boundaries : 0;
+      const maxBytes = Math.min(MAX_BYTES, boundaries >= 2 ? Math.floor((boundaries - 2) / 2) : 0);
+      const bytes = utf8.encode(secret).length;
+      const chars = charCount(secret);
+      return {
+        boundaries, maxBytes, bytes, chars,
+        needBoundaries: 2 + 2 * bytes,
+        fits: bytes > 0 && bytes <= maxBytes,
+        overBytes: Math.max(0, bytes - maxBytes),
+        capLimited: bytes > MAX_BYTES,
+      };
+    }
+
+    function estimateText(bytes) {
+      return `about ${plural(bytes, 'plain letter', 'plain letters')} (a–z, digits), ` +
+        `${Math.floor(bytes / 2)} accented letters (á, ñ, ü), or ${Math.floor(bytes / 4)} emoji`;
+    }
+
+    function updateMeter() {
+      const carrier = document.getElementById('enc-carrier').value;
+      const secret = document.getElementById('enc-secret').value;
+      const p = plan(carrier, secret);
+      const meter = document.getElementById('enc-meter');
+      const figure = document.getElementById('enc-meter-figure');
+      const bar = document.getElementById('enc-meter-bar');
+      const verdict = document.getElementById('enc-meter-verdict');
+      const detail = document.getElementById('enc-meter-detail');
+      const btn = document.getElementById('enc-btn');
+      meter.className = 'meter';
+      btn.disabled = true;
+
+      if (!carrier.trim()) {
+        figure.textContent = '';
+        bar.style.width = '0';
+        verdict.textContent = 'Paste a carrier text to see how much it can hold.';
+        detail.textContent = 'Room comes from the spaces, tabs and line breaks between words: every 2 of them hold 1 byte of the message, and the first 2 hold its length.';
+        return p;
+      }
+
+      const msgPart = p.chars ? `${plural(p.chars, 'character', 'characters')} = ${plural(p.bytes, 'byte', 'bytes')}` : 'empty';
+      figure.textContent = `${p.bytes} / ${p.maxBytes} bytes`;
+      bar.style.width = p.maxBytes ? `${Math.min(100, 100 * p.bytes / p.maxBytes)}%` : (p.bytes ? '100%' : '0');
+      const room = `This carrier has ${plural(p.boundaries, 'word boundary', 'word boundaries')}, room for ${plural(p.maxBytes, 'byte', 'bytes')}` +
+        (p.boundaries > 2 * MAX_BYTES + 2 ? ` (the format's maximum is ${MAX_BYTES})` : '') + '.';
+
+      if (!secret) {
+        verdict.innerHTML = `<strong>Room for up to ${plural(p.maxBytes, 'byte', 'bytes')}.</strong> ` +
+          `Estimate: ${estimateText(p.maxBytes)}. The exact count appears as you type.`;
+        detail.textContent = room;
+        return p;
+      }
+      if (p.fits) {
+        const left = p.maxBytes - p.bytes;
+        meter.classList.add(left < Math.max(4, p.maxBytes / 10) ? 'tight' : 'ok');
+        verdict.innerHTML = `<strong>Fits.</strong> Your message: ${msgPart} (UTF-8). ` +
+          (left ? `${plural(left, 'byte', 'bytes')} left: ${estimateText(left)}.` : 'Exactly full: not one more byte fits.');
+        detail.textContent = room;
+        btn.disabled = false;
+        return p;
+      }
+      meter.classList.add('over');
+      let fix;
+      if (p.capLimited) {
+        fix = `The format holds at most ${MAX_BYTES} bytes per message, whatever the carrier, so shorten the message by at least ${plural(p.bytes - MAX_BYTES, 'byte', 'bytes')}.`;
+      } else {
+        const more = p.needBoundaries - p.boundaries;
+        fix = `Shorten the message by at least ${plural(p.overBytes, 'byte', 'bytes')}` +
+          ` (one plain letter is 1 byte, an accented letter 2, most emoji 4 or more), ` +
+          `or make the carrier longer: it needs ${plural(more, 'more word boundary', 'more word boundaries')} (spaces or line breaks between words).`;
+      }
+      verdict.innerHTML = `<strong>Too long by ${plural(p.overBytes, 'byte', 'bytes')}.</strong> Your message: ${msgPart} (UTF-8).`;
+      detail.textContent = fix + ' ' + room;
+      return p;
+    }
+
     /* ── Tab switching ──────────────────────────────── */
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -346,26 +406,17 @@
       });
     }
 
-    /* ── Live capacity hint on carrier input ─────── */
-    document.getElementById('enc-carrier').addEventListener('input', updateCapHint);
-    document.getElementById('enc-secret').addEventListener('input', updateSecHint);
-
-    function updateCapHint() {
-      const carrier = document.getElementById('enc-carrier').value;
-      const hint = document.getElementById('enc-cap-hint');
-      if (!carrier.trim()) { hint.textContent = ''; return; }
-      const cap = Stegano.capacity(carrier);
-      hint.innerHTML =
-        `<strong>${cap.boundaries}</strong> word boundaries &mdash; ` +
-        `max secret: <strong>${cap.maxSecret}</strong> bytes`;
-    }
-    function updateSecHint() {
-      const secret = document.getElementById('enc-secret').value;
-      const hint = document.getElementById('enc-sec-hint');
-      if (!secret) { hint.textContent = ''; return; }
-      const len = new TextEncoder().encode(secret).length;
-      hint.textContent = `(${len} byte${len !== 1 ? 's' : ''})`;
-    }
+    /* ── Live capacity: every change in either field ── */
+    ['enc-carrier', 'enc-secret'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        updateMeter();
+        clearStatus('enc-status');
+        /* an earlier result no longer matches the inputs: never leave it on screen */
+        document.getElementById('enc-result').value = '';
+        document.getElementById('enc-stats').textContent = '';
+      });
+    });
+    updateMeter();
 
     /* ── Encode ─────────────────────────────────────── */
     document.getElementById('enc-btn').addEventListener('click', () => {
@@ -387,14 +438,14 @@
       }
 
       try {
-        const res = Stegano.encode(carrier, secret, pass);
+        const res = Stegano.encode(carrier, secret, pass);   /* still validates; never truncates */
         document.getElementById('enc-result').value = res.text;
         const s = res.stats;
         document.getElementById('enc-stats').textContent =
-          `Carrier: ${s.carrierBytes} B \u2192 Output: ${s.outputBytes} B ` +
-          `(${s.bloat}x)  \u2502  Boundaries: ${s.dataSymbols} data + ` +
+          `Carrier: ${s.carrierBytes} B → Output: ${s.outputBytes} B ` +
+          `(${s.bloat}x)  │  Boundaries: ${s.dataSymbols} data + ` +
           `${s.fillerSymbols} filler = ${s.boundaries} total`;
-        showStatus('enc-status', 'Encoded successfully.', 'success');
+        showStatus('enc-status', `Encoded ${plural(charCount(secret), 'character', 'characters')} (${plural(utf8.encode(secret).length, 'byte', 'bytes')}).`, 'success');
       } catch (e) {
         showStatus('enc-status', e.message, 'error');
       }
@@ -416,14 +467,19 @@
       try {
         const msg = Stegano.decode(input, pass);
         document.getElementById('dec-result').value = msg;
-        showStatus('dec-status',
-          `Decoded ${new TextEncoder().encode(msg).length} bytes.`, 'success');
+        if (!msg) {
+          showStatus('dec-status', 'No hidden message found (or a different passphrase was used).', 'error');
+        } else {
+          showStatus('dec-status',
+            `Decoded ${plural(charCount(msg), 'character', 'characters')} (${plural(utf8.encode(msg).length, 'byte', 'bytes')}). ` +
+            'With a wrong passphrase this can be garbage: check it reads as intended.', 'success');
+        }
       } catch (e) {
         showStatus('dec-status', e.message, 'error');
       }
     });
 
-    /* ── Strip ──────────────────────────────────────── */
+    /* ── Remove hidden characters ───────────────────── */
     document.getElementById('strip-btn').addEventListener('click', () => {
       clearStatus('strip-status');
       document.getElementById('strip-result').value = '';
@@ -439,26 +495,9 @@
 
       const removed = [...input].length - [...clean].length;
       showStatus('strip-status',
-        `Stripped ${removed} hidden symbol${removed !== 1 ? 's' : ''}.`,
+        removed ? `Removed ${plural(removed, 'hidden character', 'hidden characters')}.`
+                : 'No hidden characters found; the text is unchanged.',
         removed > 0 ? 'success' : 'error');
-    });
-
-    /* ── Capacity ───────────────────────────────────── */
-    document.getElementById('cap-btn').addEventListener('click', () => {
-      clearStatus('cap-status');
-      document.getElementById('cap-result').textContent = '';
-
-      const input = document.getElementById('cap-input').value;
-      if (!input.trim()) {
-        showStatus('cap-status', 'Input text is empty.', 'error');
-        return;
-      }
-
-      const cap = Stegano.capacity(input);
-      document.getElementById('cap-result').textContent =
-        `Word boundaries: ${cap.boundaries}\n` +
-        `Max secret: ${cap.maxSecret} bytes`;
-      showStatus('cap-status', 'Capacity computed.', 'success');
     });
 
     /* ── Copy buttons ──────────────────────────────── */
