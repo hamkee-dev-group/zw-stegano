@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero-Width Steganography</title>
+  <style>
+    :root {
+      --accent: #0077cc;
+      --accent-hover: #005fa3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --text: #333;
+      --muted: #6c757d;
+      --border: #ddd;
+      --error-bg: #fef2f2;
+      --error-text: #dc3545;
+      --success-bg: #f0fdf4;
+      --success-text: #16a34a;
+      --radius: 6px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 24px 28px;
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    h1 {
+      text-align: center;
+      color: var(--accent);
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    /* ── Tabs ─────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 22px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Form elements ────────────────────────────── */
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .hint {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 0.88rem;
+      resize: vertical;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      color: var(--text);
+      background: #fafbfc;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,119,204,0.15);
+    }
+    textarea[readonly] {
+      background: #f9f9f9;
+      cursor: default;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,119,204,0.15);
+    }
+    .passphrase-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .passphrase-row input { margin-bottom: 0; flex: 1; }
+    .passphrase-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 400;
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+    .passphrase-row label input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    /* ── Buttons ──────────────────────────────────── */
+    .btn-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    button {
+      background: var(--accent);
+      color: #fff;
+      padding: 9px 22px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:active { transform: scale(0.98); }
+    button.secondary {
+      background: #e9ecef;
+      color: var(--text);
+    }
+    button.secondary:hover { background: #dee2e6; }
+
+    /* ── Status / stats ───────────────────────────── */
+    .status {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .status.error {
+      display: block;
+      background: var(--error-bg);
+      color: var(--error-text);
+      border: 1px solid #fecaca;
+    }
+    .status.success {
+      display: block;
+      background: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid #bbf7d0;
+    }
+    .stats {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-family: "SF Mono", monospace;
+      margin-bottom: 10px;
+    }
+    .capacity-hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: -8px 0 12px;
+    }
+    .capacity-hint strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Zero-Width Steganography</h1>
+    <p class="subtitle">Hide secret messages in plain text using invisible Unicode characters</p>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="encode">Encode</div>
+      <div class="tab" data-tab="decode">Decode</div>
+      <div class="tab" data-tab="strip">Strip</div>
+      <div class="tab" data-tab="capacity">Capacity</div>
+    </div>
+
+    <!-- ── Encode ─────────────────────────────────── -->
+    <div id="encode" class="panel active">
+      <label for="enc-carrier">Carrier text</label>
+      <textarea id="enc-carrier" rows="6" placeholder="Paste the innocent-looking cover text here..."></textarea>
+      <div id="enc-cap-hint" class="capacity-hint"></div>
+
+      <label for="enc-secret">Secret message <span class="hint" id="enc-sec-hint"></span></label>
+      <textarea id="enc-secret" rows="2" placeholder="The message to hide..."></textarea>
+
+      <label>Passphrase <span class="hint">(optional — leave empty to use carrier hash)</span></label>
+      <div class="passphrase-row">
+        <input type="password" id="enc-pass" placeholder="Passphrase">
+        <label><input type="checkbox" id="enc-show-pass"> Show</label>
+      </div>
+
+      <div class="btn-row">
+        <button id="enc-btn">Encode</button>
+      </div>
+
+      <div id="enc-status" class="status"></div>
+      <div id="enc-stats" class="stats"></div>
+
+      <label for="enc-result">Result</label>
+      <textarea id="enc-result" rows="6" readonly placeholder="Encoded output will appear here..."></textarea>
+      <div class="btn-row">
+        <button class="secondary" id="enc-copy">Copy to Clipboard</button>
+      </div>
+    </div>
+
+    <!-- ── Decode ─────────────────────────────────── -->
+    <div id="decode" class="panel">
+      <label for="dec-input">Encoded text</label>
+      <textarea id="dec-input" rows="6" placeholder="Paste text containing hidden message..."></textarea>
+
+      <label>Passphrase <span class="hint">(must match the one used to encode)</span></label>
+      <div class="passphrase-row">
+        <input type="password" id="dec-pass" placeholder="Passphrase">
+        <label><input type="checkbox" id="dec-show-pass"> Show</label>
+      </div>
+
+      <div class="btn-row">
+        <button id="dec-btn">Decode</button>
+      </div>
+
+      <div id="dec-status" class="status"></div>
+
+      <label for="dec-result">Hidden message</label>
+      <textarea id="dec-result" rows="3" readonly placeholder="Decoded secret will appear here..."></textarea>
+      <div class="btn-row">
+        <button class="secondary" id="dec-copy">Copy to Clipboard</button>
+      </div>
+    </div>
+
+    <!-- ── Strip ──────────────────────────────────── -->
+    <div id="strip" class="panel">
+      <label for="strip-input">Encoded text</label>
+      <textarea id="strip-input" rows="6" placeholder="Paste text to remove all hidden symbols..."></textarea>
+
+      <div class="btn-row">
+        <button id="strip-btn">Strip Hidden Symbols</button>
+      </div>
+
+      <div id="strip-status" class="status"></div>
+
+      <label for="strip-result">Clean text</label>
+      <textarea id="strip-result" rows="6" readonly placeholder="Text with symbols removed..."></textarea>
+      <div class="btn-row">
+        <button class="secondary" id="strip-copy">Copy to Clipboard</button>
+      </div>
+    </div>
+
+    <!-- ── Capacity ───────────────────────────────── -->
+    <div id="capacity" class="panel">
+      <label for="cap-input">Carrier text</label>
+      <textarea id="cap-input" rows="6" placeholder="Paste carrier text to check capacity..."></textarea>
+
+      <div class="btn-row">
+        <button id="cap-btn">Check Capacity</button>
+      </div>
+
+      <div id="cap-status" class="status"></div>
+      <div id="cap-result" class="stats"></div>
+    </div>
+  </div>
+
+  <script src="stegano.js"></script>
+  <script>
+    /* ── Tab switching ──────────────────────────────── */
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    /* ── Show/hide passphrase ──────────────────────── */
+    document.getElementById('enc-show-pass').addEventListener('change', e => {
+      document.getElementById('enc-pass').type = e.target.checked ? 'text' : 'password';
+    });
+    document.getElementById('dec-show-pass').addEventListener('change', e => {
+      document.getElementById('dec-pass').type = e.target.checked ? 'text' : 'password';
+    });
+
+    /* ── Helpers ────────────────────────────────────── */
+    function showStatus(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'status ' + type;
+    }
+    function clearStatus(id) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      el.className = 'status';
+    }
+    function copyText(textareaId, statusId) {
+      const text = document.getElementById(textareaId).value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showStatus(statusId, 'Copied to clipboard.', 'success');
+        setTimeout(() => clearStatus(statusId), 2000);
+      }).catch(() => {
+        /* Fallback for older browsers / non-HTTPS */
+        const el = document.getElementById(textareaId);
+        el.select();
+        document.execCommand('copy');
+        showStatus(statusId, 'Copied to clipboard.', 'success');
+        setTimeout(() => clearStatus(statusId), 2000);
+      });
+    }
+
+    /* ── Live capacity hint on carrier input ─────── */
+    document.getElementById('enc-carrier').addEventListener('input', updateCapHint);
+    document.getElementById('enc-secret').addEventListener('input', updateSecHint);
+
+    function updateCapHint() {
+      const carrier = document.getElementById('enc-carrier').value;
+      const hint = document.getElementById('enc-cap-hint');
+      if (!carrier.trim()) { hint.textContent = ''; return; }
+      const cap = Stegano.capacity(carrier);
+      hint.innerHTML =
+        `<strong>${cap.boundaries}</strong> word boundaries &mdash; ` +
+        `max secret: <strong>${cap.maxSecret}</strong> bytes`;
+    }
+    function updateSecHint() {
+      const secret = document.getElementById('enc-secret').value;
+      const hint = document.getElementById('enc-sec-hint');
+      if (!secret) { hint.textContent = ''; return; }
+      const len = new TextEncoder().encode(secret).length;
+      hint.textContent = `(${len} byte${len !== 1 ? 's' : ''})`;
+    }
+
+    /* ── Encode ─────────────────────────────────────── */
+    document.getElementById('enc-btn').addEventListener('click', () => {
+      clearStatus('enc-status');
+      document.getElementById('enc-stats').textContent = '';
+      document.getElementById('enc-result').value = '';
+
+      const carrier = document.getElementById('enc-carrier').value;
+      const secret  = document.getElementById('enc-secret').value;
+      const pass    = document.getElementById('enc-pass').value;
+
+      if (!carrier.trim()) {
+        showStatus('enc-status', 'Carrier text is empty.', 'error');
+        return;
+      }
+      if (!secret) {
+        showStatus('enc-status', 'Secret message is empty.', 'error');
+        return;
+      }
+
+      try {
+        const res = Stegano.encode(carrier, secret, pass);
+        document.getElementById('enc-result').value = res.text;
+        const s = res.stats;
+        document.getElementById('enc-stats').textContent =
+          `Carrier: ${s.carrierBytes} B \u2192 Output: ${s.outputBytes} B ` +
+          `(${s.bloat}x)  \u2502  Boundaries: ${s.dataSymbols} data + ` +
+          `${s.fillerSymbols} filler = ${s.boundaries} total`;
+        showStatus('enc-status', 'Encoded successfully.', 'success');
+      } catch (e) {
+        showStatus('enc-status', e.message, 'error');
+      }
+    });
+
+    /* ── Decode ─────────────────────────────────────── */
+    document.getElementById('dec-btn').addEventListener('click', () => {
+      clearStatus('dec-status');
+      document.getElementById('dec-result').value = '';
+
+      const input = document.getElementById('dec-input').value;
+      const pass  = document.getElementById('dec-pass').value;
+
+      if (!input.trim()) {
+        showStatus('dec-status', 'Input text is empty.', 'error');
+        return;
+      }
+
+      try {
+        const msg = Stegano.decode(input, pass);
+        document.getElementById('dec-result').value = msg;
+        showStatus('dec-status',
+          `Decoded ${new TextEncoder().encode(msg).length} bytes.`, 'success');
+      } catch (e) {
+        showStatus('dec-status', e.message, 'error');
+      }
+    });
+
+    /* ── Strip ──────────────────────────────────────── */
+    document.getElementById('strip-btn').addEventListener('click', () => {
+      clearStatus('strip-status');
+      document.getElementById('strip-result').value = '';
+
+      const input = document.getElementById('strip-input').value;
+      if (!input) {
+        showStatus('strip-status', 'Input text is empty.', 'error');
+        return;
+      }
+
+      const clean = Stegano.strip(input);
+      document.getElementById('strip-result').value = clean;
+
+      const removed = [...input].length - [...clean].length;
+      showStatus('strip-status',
+        `Stripped ${removed} hidden symbol${removed !== 1 ? 's' : ''}.`,
+        removed > 0 ? 'success' : 'error');
+    });
+
+    /* ── Capacity ───────────────────────────────────── */
+    document.getElementById('cap-btn').addEventListener('click', () => {
+      clearStatus('cap-status');
+      document.getElementById('cap-result').textContent = '';
+
+      const input = document.getElementById('cap-input').value;
+      if (!input.trim()) {
+        showStatus('cap-status', 'Input text is empty.', 'error');
+        return;
+      }
+
+      const cap = Stegano.capacity(input);
+      document.getElementById('cap-result').textContent =
+        `Word boundaries: ${cap.boundaries}\n` +
+        `Max secret: ${cap.maxSecret} bytes`;
+      showStatus('cap-status', 'Capacity computed.', 'success');
+    });
+
+    /* ── Copy buttons ──────────────────────────────── */
+    document.getElementById('enc-copy').addEventListener('click',
+      () => copyText('enc-result', 'enc-status'));
+    document.getElementById('dec-copy').addEventListener('click',
+      () => copyText('dec-result', 'dec-status'));
+    document.getElementById('strip-copy').addEventListener('click',
+      () => copyText('strip-result', 'strip-status'));
+  </script>
+</body>
+</html>
