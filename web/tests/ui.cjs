@@ -1,6 +1,7 @@
 /* Browser checks for web/index.html (live capacity, encode/decode, strip, layout).
    Serves web/ on 127.0.0.1, drives Chromium with Playwright, writes screenshots to $SHOTS.
-   Run: node web/tests/ui.cjs   (Playwright from NODE_PATH or a global install) */
+   Run: node web/tests/ui.cjs   (Playwright from NODE_PATH or a global install)
+   STEGANO_URL=https://hamkee.net/stegano/ runs the same checks against the live page. */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +24,7 @@ const words = n => Array.from({ length: n + 1 }, (_, i) => `w${i}`).join(' ');  
 
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
-  const url = `http://127.0.0.1:${server.address().port}/`;
+  const url = process.env.STEGANO_URL || `http://127.0.0.1:${server.address().port}/`;   // e.g. https://hamkee.net/stegano/
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1100, height: 1300 } });
   page.on('pageerror', e => check('no page error', false, e.message));
