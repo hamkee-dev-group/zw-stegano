@@ -151,7 +151,7 @@
       <a class="brand" href="https://hamkee.net/">HAMKEE</a>
       <h1>Zero-Width Steganography</h1>
       <p class="subtitle">Hide a short message inside ordinary text using invisible Unicode characters. Everything runs in your browser; nothing is sent anywhere.</p>
-      <p class="caveat">This is not encryption. Anyone with this tool (and the passphrase, if you set one) can read the message, and software that looks for invisible characters can detect or remove them.</p>
+      <p class="caveat">This is not encryption, and the message is not guaranteed to stay hidden. Anyone with this tool (and the passphrase, if you set one) can read it. Software that looks for invisible characters can detect it. Some mail clients and word processors strip the characters, as does Unicode NFKC_Casefold normalisation, and then the message is lost. Half of the characters used are text-direction controls, so editors and code hosts such as GitHub may warn about them, and some programs visibly reorder words around them.</p>
     </header>
 
     <div class="tabs" role="tablist">
