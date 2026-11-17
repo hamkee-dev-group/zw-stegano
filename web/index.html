@@ -55,7 +55,6 @@
       color: var(--text-primary); font-size: 1.5rem; margin: .4rem 0 .6rem;
     }
     .subtitle { margin: 0 0 .4rem; }
-    .caveat { margin: 0; font-size: .92rem; color: var(--text-tertiary); }
 
     /* ── Tabs ─────────────────────────────────────── */
     .tabs { display: flex; gap: .25rem; border-bottom: 2px solid var(--border-default); margin-bottom: 1.5rem; overflow-x: auto; }
@@ -151,7 +150,6 @@
       <a class="brand" href="https://hamkee.net/">HAMKEE</a>
       <h1>Zero-Width Steganography</h1>
       <p class="subtitle">Hide a short message inside ordinary text using invisible Unicode characters. Everything runs in your browser; nothing is sent anywhere.</p>
-      <p class="caveat">This is not encryption, and the message is not guaranteed to stay hidden. Anyone with this tool (and the passphrase, if you set one) can read it. Software that looks for invisible characters can detect it. Some mail clients and word processors strip the characters, as does Unicode NFKC_Casefold normalisation, and then the message is lost. Half of the characters used are text-direction controls, so editors and code hosts such as GitHub may warn about them, and some programs visibly reorder words around them.</p>
     </header>
 
     <div class="tabs" role="tablist">
@@ -237,8 +235,8 @@
     <div id="strip" class="panel">
       <p class="panel-help">Deletes every invisible character this tool uses and gives back the plain visible text, for example
         to clean a text before you forward or publish it, or to get the original carrier back. It does not read the message
-        (use Decode for that). Note: the same invisible characters are also used legitimately, for example as
-        left-to-right or right-to-left marks in mixed-script text, and those are removed too.</p>
+        (use Decode for that). Note: some of these characters also have legitimate uses, for example
+        text-direction marks or variation selectors, and those are removed too.</p>
       <div class="field">
         <label for="strip-input">Text</label>
         <textarea id="strip-input" rows="6" placeholder="Paste text to remove hidden characters from..."></textarea>

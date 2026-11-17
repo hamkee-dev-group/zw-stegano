@@ -1,10 +1,11 @@
 /**
  * stegano.js — Zero-width Unicode steganography
  *
- * JavaScript port of stegano.c — fully cross-compatible.
- * C-encoded text decodes in browser; browser-encoded text decodes in C.
+ * Browser codec. It began as a port of stegano.c; the C tool has since moved to a 3-byte
+ * header, so the two are not compatible.
  *
- * Alphabet:  16 invisible Unicode symbols (4 bits per insertion)
+ * Alphabet:  16 invisible Unicode symbols (4 bits per insertion); the decoder also reads
+ *            the legacy symbols (see LEGACY below)
  * Placement: word boundaries only (after whitespace)
  * Format:    1-byte length prefix + message (nibble-encoded)
  * Scatter:   xorshift64 PRNG + Fisher-Yates shuffle
@@ -18,33 +19,60 @@ const Stegano = (() => {
     const MASK64 = (1n << 64n) - 1n;
 
     /*
-     * Symbol alphabet: 16 invisible Unicode chars, all Category Cf (Format).
+     * Symbol alphabet: 16 invisible, default-ignorable Unicode chars (Cf and Mn),
+     * none of them a bidi control, a joiner or a line-break character.
      *
      * NOT used (treated as whitespace by Python/JS runtimes):
      *   U+2028 Line Separator, U+2029 Paragraph Separator
      */
     const SYMBOLS = [
-        '\u200B',  // 0x0  Zero Width Space
-        '\u200C',  // 0x1  Zero Width Non-Joiner
-        '\u200D',  // 0x2  Zero Width Joiner
-        '\u200E',  // 0x3  Left-to-Right Mark
-        '\u200F',  // 0x4  Right-to-Left Mark
-        '\u202A',  // 0x5  LTR Embedding
-        '\u202B',  // 0x6  RTL Embedding
-        '\u202C',  // 0x7  Pop Directional Formatting
-        '\u202D',  // 0x8  LTR Override
+        '\uFE00',  // 0x0  Variation Selector-1
+        '\uFE01',  // 0x1  Variation Selector-2
+        '\uFE02',  // 0x2  Variation Selector-3
+        '\uFE03',  // 0x3  Variation Selector-4
+        '\uFE04',  // 0x4  Variation Selector-5
+        '\uFE05',  // 0x5  Variation Selector-6
+        '\uFE06',  // 0x6  Variation Selector-7
+        '\uFE07',  // 0x7  Variation Selector-8
+        '\uFE08',  // 0x8  Variation Selector-9
         '\u2060',  // 0x9  Word Joiner
         '\u2061',  // 0xA  Function Application
         '\u2062',  // 0xB  Invisible Times
         '\u2063',  // 0xC  Invisible Separator
         '\u2064',  // 0xD  Invisible Plus
-        '\u2066',  // 0xE  Left-to-Right Isolate
-        '\u2067',  // 0xF  Right-to-Left Isolate
+        '\uFE09',  // 0xE  Variation Selector-10
+        '\uFE0A',  // 0xF  Variation Selector-11
     ];
 
-    /* Reverse lookup: symbol char → nibble value */
+    /*
+     * LEGACY: what 0x0-0x8, 0xE and 0xF were until 2026-11-17. Eight are bidi controls
+     * (LRM, RLM, LRE, RLE, PDF, LRO, LRI, RLI): embeddings and isolates were opened and
+     * never closed, so the encoded text visibly reordered words and moved spaces. ZWSP,
+     * ZWNJ and ZWJ changed how Arabic and Hebrew render (measured in Chromium; ZWJ also
+     * in Firefox). Each symbol above was chosen because, inserted after every space,
+     * it leaves Latin, accented/emoji, Arabic, Hebrew and mixed text pixel-identical in
+     * Chromium and Firefox. The old symbols are no longer written, only read: each means
+     * the same nibble as its replacement, so text encoded with the old alphabet decodes
+     * unchanged and no message is ambiguous.
+     */
+    const LEGACY = {
+        '\u200B': 0x0,  // Zero Width Space
+        '\u200C': 0x1,  // Zero Width Non-Joiner
+        '\u200D': 0x2,  // Zero Width Joiner
+        '\u200E': 0x3,  // Left-to-Right Mark
+        '\u200F': 0x4,  // Right-to-Left Mark
+        '\u202A': 0x5,  // LTR Embedding
+        '\u202B': 0x6,  // RTL Embedding
+        '\u202C': 0x7,  // Pop Directional Formatting
+        '\u202D': 0x8,  // LTR Override
+        '\u2066': 0xE,  // Left-to-Right Isolate
+        '\u2067': 0xF,  // Right-to-Left Isolate
+    };
+
+    /* Reverse lookup: symbol char → nibble value (current and legacy symbols) */
     const SYM_TO_VAL = new Map();
     SYMBOLS.forEach((s, i) => SYM_TO_VAL.set(s, i));
+    Object.entries(LEGACY).forEach(([s, v]) => SYM_TO_VAL.set(s, v));
 
     /* ── xorshift64 PRNG ─────────────────────────────────────────── */
 
